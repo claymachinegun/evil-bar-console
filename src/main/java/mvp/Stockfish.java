@@ -1,64 +1,59 @@
 package mvp;
 
-import java.awt.im.InputContext;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
+import java.awt.List;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.util.Scanner;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
-import java.util.function.Consumer;
 
-public class Stockfish {
-    private Process process;
-    private Consumer<String> onStringRecieved;
-    private Future processIO;    
-    private ExecutorService executorService;
-    private ConcurrentLinkedQueue<String> writerQueue;
-    private BufferedWriter writer;
+public class Stockfish implements AutoCloseable {
+    private SynchronousUCIClient uciClient;
+    private int depth;
 
-    public void setOnStringRecieved(Consumer<String> consumer) {
-        this.onStringRecieved = consumer;
-        this.writerQueue = new ConcurrentLinkedQueue<>();
+    public Stockfish(String stockfishPath, int depth) {
+        this.uciClient = new SynchronousUCIClient(stockfishPath);
+        this.depth = depth;
     }
 
-    public Stockfish() {
-        executorService = Executors.newFixedThreadPool(1);
+    private String readUntilAndGetPrevious(String mark) throws IOException {
+        String previous = "";
+        String output = "";
+        do {
+            previous = output;
+            output = this.uciClient.readLine();
+        } while (!output.startsWith(mark));
+        return previous;
     }
 
-    public void start() throws IOException {
-        process = Runtime.getRuntime().exec("stockfish");
-        writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
-        processIO = executorService.submit(()-> {
+    public int getEvaluation(String fenPosition) throws IOException {
+        String output = "";
+        this.uciClient.sendCommand("ucinewgame\n");
+        do {
+            this.uciClient.sendCommand("isready\n");
+            output = this.uciClient.readLine();
+        } while (!output.startsWith("readyok"));
+
+        this.uciClient.sendCommand(String.format("position fen %s\n", fenPosition));
             
-                try(BufferedReader processInput = new BufferedReader(new InputStreamReader(process.getInputStream()))){
-                    while(true) {
-                            String s = processInput.readLine();
-                            if(onStringRecieved != null && s != null) {
-                                onStringRecieved.accept(s);
-                            }
-                    }
-            }
-            
-        });
+        this.uciClient.sendCommand(String.format("go depth %d\n", this.depth));
+        
+        String result = this.readUntilAndGetPrevious("bestmove");
+        System.out.println(result);
+
+        return 5;
     }
 
-    public void sendCommand(String inputString) throws IOException {
-            System.out.println("got this -> " + inputString);
-            writer.write(inputString);
-            writer.flush();
-    } 
 
-    public void stop() {
-        processIO.cancel(true);
+    public void init() throws IOException {
+        this.uciClient.start();
+        this.uciClient.sendCommand("uci\n");
+        readUntilAndGetPrevious("uciok");
+        
     }
 
+    @Override
+    public void close() throws Exception {
+        uciClient.close();
+    }
+
+    
+    
 
 }
