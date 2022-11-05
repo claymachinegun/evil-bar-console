@@ -55,6 +55,10 @@ public class FenPosition {
 
         int complexEvaluation = stockfish.getEvaluation(fen);
 
+        if(result.getMoveSide() == MoveSide.BLACK) {
+            complexEvaluation = complexEvaluation * -1;
+        }
+
         result.setComplexEvaluation(complexEvaluation);
 
         return result;
