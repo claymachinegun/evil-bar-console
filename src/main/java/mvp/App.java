@@ -1,13 +1,7 @@
 package mvp;
 
-import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.Executors;
 
 public class App {
     public static void main(String[] args) {
@@ -18,8 +12,6 @@ public class App {
         } catch (IOException exception) {
             exception.printStackTrace();
         }
-
-        String s = source.iterator().next();
 
         Stockfish stockfish = new Stockfish("stockfish", 18);
         try {
@@ -84,6 +76,5 @@ public class App {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 }
